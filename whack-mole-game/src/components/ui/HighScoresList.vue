@@ -78,7 +78,7 @@
  * Display high scores with sorting and filtering
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Button from '@components/shared/Button.vue'
 import { getHighScores } from '@services/storageService.js'
 

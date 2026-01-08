@@ -61,7 +61,7 @@
  * AI prompt input with preset selection and history
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Button from '@components/shared/Button.vue'
 
 const props = defineProps({

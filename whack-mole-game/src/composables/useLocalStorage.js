@@ -132,7 +132,10 @@ export const indexedDBUtils = {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([storeName], 'readwrite')
       const store = transaction.objectStore(storeName)
-      const request = store.add(data)
+      
+      // Clone and clean data to ensure it's storable in IndexedDB
+      const cleanData = this._cleanDataForStorage(data)
+      const request = store.add(cleanData)
 
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
@@ -150,11 +153,51 @@ export const indexedDBUtils = {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([storeName], 'readwrite')
       const store = transaction.objectStore(storeName)
-      const request = store.put(data)
+      
+      // Clone and clean data to ensure it's storable in IndexedDB
+      const cleanData = this._cleanDataForStorage(data)
+      const request = store.put(cleanData)
 
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
+  },
+
+  /**
+   * Clean data for storage - remove non-cloneable properties
+   * @param {any} data - Data to clean
+   * @returns {Object} Cleaned data
+   * @private
+   */
+  _cleanDataForStorage(data) {
+    if (typeof data !== 'object' || data === null) {
+      return data
+    }
+
+    const cleaned = Array.isArray(data) ? [] : {}
+    
+    for (const key in data) {
+      const value = data[key]
+      
+      // Skip functions and other non-cloneable types
+      if (typeof value === 'function' || 
+          typeof value === 'symbol' ||
+          (typeof value === 'object' && value !== null && 
+           (value instanceof HTMLElement || 
+            value instanceof Node || 
+            value instanceof Window))) {
+        continue
+      }
+      
+      // Recursively clean nested objects
+      if (typeof value === 'object' && value !== null) {
+        cleaned[key] = this._cleanDataForStorage(value)
+      } else {
+        cleaned[key] = value
+      }
+    }
+    
+    return cleaned
   },
 
   /**

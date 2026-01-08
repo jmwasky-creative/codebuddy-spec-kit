@@ -1,47 +1,58 @@
 <template>
   <div class="game-canvas-container">
     <ScoreDisplay
-      :score="score"
-      :hits="hits"
-      :misses="misses"
-      :timeRemaining="timeRemaining"
+      :score="score.value"
+      :hits="hits.value"
+      :misses="misses.value"
+      :timeRemaining="timeRemaining.value"
       class="score-display-overlay"
     />
 
-    <canvas
-      ref="canvasRef"
-      class="game-canvas"
-      :width="gameConfig.visualSettings.gameAreaSize.width"
-      :height="gameConfig.visualSettings.gameAreaSize.height"
-      @click="handleCanvasClick"
-      @mousedown="handleMouseDown"
-      @mouseup="handleMouseUp"
-      @touchstart="handleTouchStart"
-      @touchend="handleTouchEnd"
-    />
+    <div class="game-layout">
+      <!-- Left side - Mole field -->
+      <div class="mole-field">
+        <canvas
+          ref="canvasRef"
+          class="game-canvas"
+          :width="gameConfig.visualSettings.gameAreaSize.width"
+          :height="gameConfig.visualSettings.gameAreaSize.height"
+          @click="handleCanvasClick"
+          @mousedown="handleMouseDown"
+          @mouseup="handleMouseUp"
+          @touchstart="handleTouchStart"
+          @touchend="handleTouchEnd"
+        />
+      </div>
 
-    <div class="dropped-pieces">
-      <PuzzlePiece
-        v-for="piece in droppedPieces"
-        :key="piece.id"
-        :piece="piece"
-        :size="gameConfig.visualSettings.pieceSize"
-        :snappingTolerance="30"
-        @drop="handlePieceDrop"
-        @snap="handlePieceSnap"
-      />
+      <!-- Right side - Puzzle area -->
+      <div class="puzzle-area">
+        <div class="dropped-pieces">
+          <PuzzlePiece
+            v-for="piece in droppedPieces"
+            :key="piece.id"
+            :piece="piece"
+            :size="gameConfig.visualSettings.pieceSize"
+            :snappingTolerance="30"
+            draggable="true"
+            @dragstart="handlePieceDragStart"
+            @dragend="handlePieceDragEnd"
+            @drop="handlePieceDrop"
+            @snap="handlePieceSnap"
+            class="draggable-piece"
+          />
+        </div>
+
+        <PuzzleGrid
+          ref="puzzleGridRef"
+          :rows="gameConfig.puzzleGridSize.rows"
+          :cols="gameConfig.puzzleGridSize.cols"
+          :pieceSize="gameConfig.visualSettings.pieceSize"
+          :completedImage="completedImage"
+          @complete="handlePuzzleComplete"
+          @piece-placed="handleGridPiecePlaced"
+        />
+      </div>
     </div>
-
-    <PuzzleGrid
-      ref="puzzleGridRef"
-      :rows="gameConfig.puzzleGridSize.rows"
-      :cols="gameConfig.puzzleGridSize.cols"
-      :pieceSize="gameConfig.visualSettings.pieceSize"
-      :completedImage="completedImage"
-      @complete="handlePuzzleComplete"
-      @piece-placed="handleGridPiecePlaced"
-      class="puzzle-grid-overlay"
-    />
   </div>
 </template>
 
@@ -414,8 +425,21 @@ function dropPuzzlePiece(mole, x, y) {
 /**
  * Handle piece dropped in grid
  */
-function handlePieceDrop(pieceId, position) {
-  console.log('Piece dropped:', pieceId, position)
+function handlePieceDrop(event, pieceId) {
+  event.preventDefault()
+  const rect = canvasRef.value.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+  
+  // Find the piece being dragged
+  const piece = droppedPieces.value.find(p => p.id === pieceId)
+  if (!piece) return
+
+  // Update piece position
+  piece.dropX = x
+  piece.dropY = y
+
+  emit('piece-drop', pieceId, { x, y })
 }
 
 /**
@@ -428,6 +452,21 @@ function handlePieceSnap(pieceId, isCorrect) {
     piece.correctPosition = isCorrect
     gameState.placePiece(isCorrect)
   }
+}
+
+/**
+ * Handle piece drag start
+ */
+function handlePieceDragStart(event, pieceId) {
+  event.dataTransfer.setData('text/plain', pieceId)
+  event.dataTransfer.effectAllowed = 'move'
+}
+
+/**
+ * Handle piece drag end
+ */
+function handlePieceDragEnd(event) {
+  event.preventDefault()
 }
 
 /**
@@ -471,6 +510,7 @@ async function endGame() {
   stopGameLoop()
   const session = await gameState.endSession('completed')
   emit('game-complete', session)
+  props.onGameEnd(session)
 }
 
 /**
@@ -559,7 +599,29 @@ export default {
 <style scoped>
 .game-canvas-container {
   position: relative;
-  display: inline-block;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.game-layout {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.mole-field {
+  flex: 1;
+  position: relative;
+}
+
+.puzzle-area {
+  width: 300px;
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .game-canvas {
@@ -578,18 +640,19 @@ export default {
 }
 
 .dropped-pieces {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+  position: relative;
+  height: calc(100% - 120px);
+  overflow-y: auto;
+  padding: 0.5rem;
 }
 
-.puzzle-grid-overlay {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 100;
+.draggable-piece {
+  cursor: move;
+  margin: 0.5rem;
+  display: inline-block;
+}
+
+.puzzle-grid {
+  margin-top: 1rem;
 }
 </style>

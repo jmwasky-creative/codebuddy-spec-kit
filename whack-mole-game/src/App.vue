@@ -12,6 +12,7 @@
       :gameConfig="gameConfig"
       @game-complete="handleGameComplete"
       @game-abandoned="handleGameAbandoned"
+      :onGameEnd="handleGameComplete"
     />
     <ConfigPanel
       v-else-if="currentScreen === 'config'"
@@ -33,6 +34,7 @@
     />
     <Modal
       v-if="showHelpModal"
+      :visible="showHelpModal"
       title="How to Play"
       @close="closeHelpModal"
     >

@@ -24,6 +24,8 @@
  * Reusable modal overlay for dialogs, confirmations, help content
  */
 
+import { onMounted, onUnmounted } from 'vue'
+
 const props = defineProps({
   visible: {
     type: Boolean,
